@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>الجدول</title>
+
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --brand:#111827;
+      --border:#e5e7eb;
+      --shadow:0 8px 20px rgba(0,0,0,.08);
+      --radius:16px;
+      --green:#16a34a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    .navbar{
+      position:sticky;
+      bottom:0;
+      background:var(--brand);
+      display:flex;
+      justify-content:space-around;
+      padding:10px;
+    }
+    .navbar a{
+      color:#fff;
+      text-decoration:none;
+      font-size:13px;
+      padding:10px 12px;
+      border-radius:12px;
+    }
+    .navbar a.active{ background:rgba(255,255,255,.18); }
+
+    .container{
+      max-width:900px;
+      margin:auto;
+      padding:16px;
+      padding-bottom:90px;
+    }
+
+    h1{font-size:22px}
+    .sub{font-size:14px;color:var(--muted)}
+
+    .day{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:14px;
+      margin-bottom:12px;
+      box-shadow:var(--shadow);
+      border:2px solid transparent;
+      cursor:pointer;
+    }
+    .day.today{ border-color:var(--green); }
+    .day.locked{ opacity:.9; }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:16px;
+      margin-top:14px;
+      box-shadow:var(--shadow);
+    }
+
+    .row{
+      display:flex;
+      justify-content:space-between;
+      padding:8px 0;
+      border-bottom:1px dashed var(--border);
+    }
+    .row:last-child{border-bottom:none}
+    .label{color:var(--muted)}
+    .value{font-weight:700}
+
+    label{display:block;margin-top:12px}
+    input, textarea{
+      width:100%;
+      padding:12px;
+      margin-top:6px;
+      border-radius:12px;
+      border:1px solid var(--border);
+    }
+    textarea{resize:none}
+
+    .btn{
+      width:100%;
+      padding:14px;
+      margin-top:14px;
+      border:none;
+      border-radius:14px;
+      background:var(--brand);
+      color:#fff;
+      cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="stock.html">📦 البضاعة</a>
+  <a href="traders.html">🧑‍💼 التجار</a>
+  <a class="active" href="calendar.html">📅 الجدول</a>
+</nav>
+
+<div class="container">
+  <h1>📅 الجدول اليومي</h1>
+  <p class="sub">اليوم يتحفظ مرة واحدة وبعدها يبقى تقرير ثابت</p>
+
+  <div id="daysList"></div>
+
+  <!-- EDITABLE DAY -->
+  <div class="card" id="dayForm" style="display:none">
+    <h3 id="formTitle"></h3>
+
+    <label>الكمية المباعة (كجم)</label>
+    <input type="number" id="soldKg">
+
+    <label>تكلفة الكيلو</label>
+    <input type="number" id="costKg">
+
+    <label>سعر بيع الكيلو</label>
+    <input type="number" id="sellKg">
+
+    <label>ملاحظات</label>
+    <textarea id="notes" rows="3"></textarea>
+
+    <div id="profit" style="margin-top:10px;font-weight:bold"></div>
+
+    <button class="btn" onclick="saveDay()">حفظ اليوم</button>
+  </div>
+
+  <!-- READ ONLY DAY -->
+  <div class="card" id="dayDoc" style="display:none">
+    <h3 id="docTitle"></h3>
+
+    <div class="row"><span class="label">الكمية المباعة</span><span class="value" id="dQty"></span></div>
+    <div class="row"><span class="label">تكلفة الكيلو</span><span class="value" id="dCost"></span></div>
+    <div class="row"><span class="label">سعر البيع</span><span class="value" id="dSell"></span></div>
+    <div class="row"><span class="label">المكسب</span><span class="value" id="dProfit"></span></div>
+    <div class="row"><span class="label">ملاحظات</span><span class="value" id="dNotes"></span></div>
+  </div>
+</div>
+
+<script>
+  const daysList = document.getElementById("daysList");
+  const dayForm = document.getElementById("dayForm");
+  const dayDoc = document.getElementById("dayDoc");
+
+  const soldKg = document.getElementById("soldKg");
+  const costKg = document.getElementById("costKg");
+  const sellKg = document.getElementById("sellKg");
+  const notes = document.getElementById("notes");
+  const profitDiv = document.getElementById("profit");
+
+  let calendar = JSON.parse(localStorage.getItem("calendarDays")) || {};
+  let activeDate = null;
+
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  function key(d){ return d.toISOString().split("T")[0]; }
+
+  function renderDays(){
+    daysList.innerHTML = "";
+    for(let i=0;i<5;i++){
+      const d = new Date(today);
+      d.setDate(today.getDate()+i);
+      const k = key(d);
+      const saved = calendar[k];
+
+      daysList.innerHTML += `
+        <div class="day ${saved?'locked':''} ${k===key(today)?'today':''}"
+             onclick="openDay('${k}')">
+          <strong>${d.toLocaleDateString('ar-EG',{weekday:'long',day:'2-digit',month:'2-digit'})}</strong>
+          <div style="font-size:13px;color:#6b7280">
+            ${saved ? 'تقرير محفوظ' : 'مفتوح للتسجيل'}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  function openDay(k){
+    activeDate = k;
+    const data = calendar[k];
+
+    dayForm.style.display = "none";
+    dayDoc.style.display = "none";
+
+    if(data){
+      // DOCUMENT
+      dayDoc.style.display = "block";
+      document.getElementById("docTitle").textContent = "تقرير يوم " + k;
+      dQty.textContent = data.soldKg + " كجم";
+      dCost.textContent = data.costKg + " جنيه";
+      dSell.textContent = data.sellKg + " جنيه";
+      dProfit.textContent = data.profit + " جنيه";
+      dNotes.textContent = data.notes || "-";
+    }else{
+      // FORM
+      dayForm.style.display = "block";
+      document.getElementById("formTitle").textContent = "تسجيل يوم " + k;
+      soldKg.value = costKg.value = sellKg.value = notes.value = "";
+      profitDiv.textContent = "";
+    }
+  }
+
+  function calcProfit(){
+    const q = +soldKg.value, c = +costKg.value, s = +sellKg.value;
+    if(q && c && s){
+      const p = (s-c)*q;
+      profitDiv.textContent = "💰 المكسب: " + p + " جنيه";
+      profitDiv.style.color = p>=0 ? "#16a34a" : "#dc2626";
+      return p;
+    }
+    profitDiv.textContent = "";
+    return null;
+  }
+
+  soldKg.oninput = costKg.oninput = sellKg.oninput = calcProfit;
+
+  function saveDay(){
+    const profit = calcProfit();
+    if(profit===null){ alert("املا كل البيانات"); return; }
+
+    calendar[activeDate] = {
+      soldKg:+soldKg.value,
+      costKg:+costKg.value,
+      sellKg:+sellKg.value,
+      profit:profit,
+      notes:notes.value,
+      locked:true
+    };
+
+    localStorage.setItem("calendarDays", JSON.stringify(calendar));
+    renderDays();
+    openDay(activeDate);
+  }
+
+  renderDays();
+</script>
+
+</body>
+</html>

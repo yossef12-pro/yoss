@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>التجار</title>
+
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --card:#ffffff;
+      --text:#111827;
+      --muted:#6b7280;
+      --brand:#111827;
+      --border:#e5e7eb;
+      --shadow:0 8px 20px rgba(0,0,0,.08);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+
+    body{
+      margin:0;
+      font-family: system-ui, Arial;
+      background:var(--bg);
+      color:var(--text);
+    }
+
+    /* NAV */
+    .navbar{
+      position:sticky;
+      bottom:0;
+      background:var(--brand);
+      display:flex;
+      justify-content:space-around;
+      padding:10px;
+    }
+    .navbar a{
+      color:white;
+      text-decoration:none;
+      font-size:13px;
+      padding:10px 12px;
+      border-radius:12px;
+    }
+    .navbar a.active{ background:rgba(255,255,255,.18); }
+
+    /* CONTENT */
+    .container{
+      max-width:900px;
+      margin:auto;
+      padding:16px;
+      padding-bottom:90px;
+    }
+
+    h1{ margin:6px 0 14px; font-size:22px; }
+
+    .btn{
+      width:100%;
+      padding:14px;
+      font-size:16px;
+      border:none;
+      border-radius:14px;
+      background:var(--brand);
+      color:white;
+      cursor:pointer;
+    }
+
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:16px;
+      margin-top:14px;
+      box-shadow:var(--shadow);
+    }
+
+    .row{
+      display:flex;
+      justify-content:space-between;
+      padding:6px 0;
+      border-bottom:1px dashed var(--border);
+      font-size:15px;
+    }
+    .row:last-child{border-bottom:none}
+    .label{color:var(--muted)}
+    .value{font-weight:700}
+
+    /* FORM */
+    .form{
+      display:none;
+      margin-top:14px;
+    }
+
+    .form label{
+      display:block;
+      margin-top:12px;
+      font-size:14px;
+    }
+
+    .form input,
+    .form textarea{
+      width:100%;
+      padding:12px;
+      margin-top:6px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      font-size:15px;
+      resize:none;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      margin-top:16px;
+    }
+
+    .cancel{ background:#9ca3af; }
+
+    @media(min-width:768px){
+      .navbar{top:0;bottom:auto;justify-content:flex-start}
+      .navbar a{font-size:14px}
+      .grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+        gap:16px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="navbar">
+    <a href="stock.html">📦 البضاعة</a>
+    <a class="active" href="traders.html">🧑‍💼 التجار</a>
+    <a href="calendar.html">📅 الجدول</a>
+  </nav>
+
+  <!-- CONTENT -->
+  <div class="container">
+    <h1>🧑‍💼 التجار</h1>
+
+    <button class="btn" type="button" onclick="toggleForm()">➕ إضافة تاجر</button>
+
+    <!-- FORM -->
+    <div class="card form" id="traderForm">
+      <label>اسم التاجر</label>
+      <input id="traderName">
+
+      <label>رقم الموبايل</label>
+      <input id="traderPhone">
+
+      <label>العنوان</label>
+      <input id="traderAddress">
+
+      <label>ملاحظات</label>
+      <textarea id="traderNotes" rows="3"></textarea>
+
+      <div class="actions">
+        <button type="button" class="btn" onclick="saveTrader()">حفظ</button>
+        <button type="button" class="btn cancel" onclick="toggleForm()">إلغاء</button>
+      </div>
+    </div>
+
+    <!-- TRADERS LIST -->
+    <div id="tradersList" class="grid"></div>
+  </div>
+
+<script>
+  const form = document.getElementById("traderForm");
+  const list = document.getElementById("tradersList");
+
+  const traderName = document.getElementById("traderName");
+  const traderPhone = document.getElementById("traderPhone");
+  const traderAddress = document.getElementById("traderAddress");
+  const traderNotes = document.getElementById("traderNotes");
+
+  function toggleForm(){
+    form.style.display = form.style.display === "block" ? "none" : "block";
+  }
+
+  function clearForm(){
+    traderName.value = "";
+    traderPhone.value = "";
+    traderAddress.value = "";
+    traderNotes.value = "";
+  }
+
+  function saveTrader(){
+    if(!traderName.value || !traderPhone.value){
+      alert("من فضلك أدخل الاسم ورقم الموبايل");
+      return;
+    }
+
+    const trader = {
+      name: traderName.value,
+      phone: traderPhone.value,
+      address: traderAddress.value || "-",
+      notes: traderNotes.value || "-"
+    };
+
+    let traders = JSON.parse(localStorage.getItem("traders")) || [];
+    traders.push(trader);
+    localStorage.setItem("traders", JSON.stringify(traders));
+
+    clearForm();
+    toggleForm();
+    renderTraders();
+  }
+
+  function deleteTrader(index){
+    let traders = JSON.parse(localStorage.getItem("traders")) || [];
+    traders.splice(index, 1);
+    localStorage.setItem("traders", JSON.stringify(traders));
+    renderTraders();
+  }
+
+  function renderTraders(){
+    let traders = JSON.parse(localStorage.getItem("traders")) || [];
+    list.innerHTML = "";
+
+    if(traders.length === 0){
+      list.innerHTML = "<p style='color:#6b7280'>مفيش تجار لسه</p>";
+      return;
+    }
+
+    traders.forEach((trader, index) => {
+      list.innerHTML += `
+        <div class="card">
+          <div class="row"><span class="label">الاسم</span><span class="value">${trader.name}</span></div>
+          <div class="row"><span class="label">الموبايل</span><span class="value">${trader.phone}</span></div>
+          <div class="row"><span class="label">العنوان</span><span class="value">${trader.address}</span></div>
+          <div class="row"><span class="label">ملاحظات</span><span class="value">${trader.notes}</span></div>
+
+          <button
+            type="button"
+            onclick="deleteTrader(${index})"
+            style="
+              margin-top:12px;
+              width:100%;
+              padding:12px;
+              background:#dc2626;
+              color:white;
+              border:none;
+              border-radius:12px;
+              font-size:15px;
+            ">
+            🗑 حذف التاجر
+          </button>
+        </div>
+      `;
+    });
+  }
+
+  renderTraders();
+</script>
+
+</body>
+</html>
